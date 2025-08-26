@@ -1,0 +1,254 @@
+<div class="transferencia-container">
+  <div class="card main-card">
+    <div class="card-header">
+      <h1 class="card-title">Sistema de Agendamento de Transferências Financeiras</h1>
+    </div>
+    <div class="card-body">
+      
+      
+      <div class="tab-navigation">
+        <button class="tab-btn active" (click)="setActiveTab('agendamento')">
+          <i class="tab-icon">📅</i>
+          Agendar Transferência
+        </button>
+        <button class="tab-btn" (click)="setActiveTab('extrato')">
+          <i class="tab-icon">📋</i>
+          Extrato de Agendamentos
+        </button>
+        <button class="tab-btn" (click)="setActiveTab('taxas')">
+          <i class="tab-icon">ℹ️</i>
+          Tabela de Taxas
+        </button>
+      </div>
+
+      
+      
+      <div *ngIf="activeTab === 'agendamento'" class="tab-content">
+        <div class="form-container">
+          
+          
+          <div *ngIf="vm.error$ | async as error" class="alert alert-error">
+            <strong>Erro:</strong> {{ error }}
+            <button class="alert-close" (click)="vm.clearError()">×</button>
+          </div>
+
+          
+          <div class="form-grid">
+            
+            
+            <div class="form-field">
+              <label for="contaOrigem" class="label">Conta de Origem</label>
+              <input 
+                type="text"
+                class="input"
+                id="contaOrigem"
+                [value]="formData.contaOrigem"
+                (input)="onContaOrigemChange($event)"
+                placeholder="XXXXXXXXXX"
+                maxlength="10"
+                [class.error]="formData.contaOrigem === formData.contaDestino && formData.contaDestino !== 'XXXXXXXXXX'">
+              <small *ngIf="formData.contaOrigem === formData.contaDestino && formData.contaDestino !== 'XXXXXXXXXX'" class="error-message">
+                Conta de origem não pode ser igual à conta de destino
+              </small>
+            </div>
+
+            
+            <div class="form-field">
+              <label for="contaDestino" class="label">Conta de Destino</label>
+              <input 
+                type="text"
+                class="input"
+                id="contaDestino"
+                [value]="formData.contaDestino"
+                (input)="onContaDestinoChange($event)"
+                placeholder="XXXXXXXXXX"
+                maxlength="10"
+                [class.error]="formData.contaOrigem === formData.contaDestino && formData.contaOrigem !== 'XXXXXXXXXX'">
+              <small *ngIf="formData.contaOrigem === formData.contaDestino && formData.contaOrigem !== 'XXXXXXXXXX'" class="error-message">
+                Conta de destino não pode ser igual à conta de origem
+              </small>
+            </div>
+
+            
+            <div class="form-field">
+              <label for="valor" class="label">Valor da Transferência</label>
+              <input 
+                type="number"
+                class="input"
+                id="valor"
+                [value]="formData.valor"
+                (input)="onValorChange($event)"
+                step="0.01"
+                min="0.01"
+                max="999999.99"
+                placeholder="0,00">
+            </div>
+
+            
+            <div class="form-field">
+              <label for="dataTransferencia" class="label">Data da Transferência</label>
+              <input 
+                type="date"
+                class="input"
+                id="dataTransferencia"
+                [value]="formatDateForInput(formData.dataTransferencia)"
+                (change)="onDataTransferenciaChange($event)"
+                [min]="formatDateForInput(today)">
+            </div>
+
+            
+            <div class="form-field taxa-info">
+              <label class="label">Taxa Aplicável</label>
+              <div class="taxa-display" [class.no-taxa]="!(vm.taxaCalculada$ | async)">
+                <span *ngIf="vm.taxaCalculada$ | async as taxa; else noTaxa">
+                  <i class="taxa-icon success">✓</i>
+                  {{ formatCurrency(taxa) }}
+                </span>
+                <ng-template #noTaxa>
+                  <span class="no-taxa-message">
+                    <i class="taxa-icon warning">⚠</i>
+                    Nenhuma taxa aplicável para este valor
+                  </span>
+                </ng-template>
+              </div>
+              
+              
+              <div *ngIf="vm.taxaInfo$ | async as taxaInfo" class="taxa-details">
+                <small>{{ taxaInfo.descricao }}</small>
+              </div>
+            </div>
+
+            
+            <div class="form-field">
+              <label class="label">Data de Agendamento</label>
+              <input 
+                type="text"
+                class="input"
+                [value]="formatDate(formData.dataAgendamento || today)"
+                readonly
+                disabled>
+              <small>Data atual (automática)</small>
+            </div>
+
+          </div>
+
+          
+          <div class="form-actions">
+            <button 
+              class="btn btn-success"
+              (click)="onSubmit()"
+              [disabled]="!vm.canSubmit()">
+              <span *ngIf="vm.loading$ | async">⏳</span>
+              <span *ngIf="!(vm.loading$ | async)">✓</span>
+              Agendar Transferência
+            </button>
+            
+            <button 
+              class="btn btn-secondary"
+              (click)="onReset()">
+              🔄 Limpar Formulário
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      
+      <div *ngIf="activeTab === 'extrato'" class="tab-content">
+        <div class="extrato-container">
+          
+          
+          <div *ngIf="vm.loading$ | async" class="loading-container">
+            <div class="spinner"></div>
+            <p>Carregando agendamentos...</p>
+          </div>
+
+          
+          <div *ngIf="!(vm.loading$ | async)">
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Conta Origem</th>
+                    <th>Conta Destino</th>
+                    <th>Valor</th>
+                    <th>Taxa</th>
+                    <th>Data Transferência</th>
+                    <th>Data Agendamento</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let transferencia of vm.items$ | async">
+                    <td>{{ transferencia.id }}</td>
+                    <td>{{ transferencia.contaOrigem }}</td>
+                    <td>{{ transferencia.contaDestino }}</td>
+                    <td>{{ formatCurrency(transferencia.valor) }}</td>
+                    <td>{{ formatCurrency(transferencia.taxa) }}</td>
+                    <td>{{ formatDate(transferencia.dataTransferencia) }}</td>
+                    <td>{{ formatDate(transferencia.dataAgendamento) }}</td>
+                    <td>
+                      <span class="badge" [class]="getStatusClass(transferencia.status)">
+                        {{ transferencia.status }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr *ngIf="!(vm.items$ | async)?.length">
+                    <td colspan="8" class="text-center">
+                      <p>Nenhum agendamento encontrado</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      
+      <div *ngIf="activeTab === 'taxas'" class="tab-content">
+        <div class="taxas-container">
+          <div class="card info-card">
+            <div class="card-header">
+              <h2 class="card-title">Taxas Aplicáveis por Faixa de Valor</h2>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Faixa de Valor</th>
+                      <th>Taxa</th>
+                      <th>Descrição</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let taxa of vm.getTaxasDisponiveis()">
+                      <td>
+                        <span *ngIf="taxa.valorMinimo === 0">
+                          Até {{ formatCurrency(taxa.valorMaximo) }}
+                        </span>
+                        <span *ngIf="taxa.valorMinimo > 0 && taxa.valorMaximo < 999999999">
+                          {{ formatCurrency(taxa.valorMinimo) }} a {{ formatCurrency(taxa.valorMaximo) }}
+                        </span>
+                        <span *ngIf="taxa.valorMaximo >= 999999999">
+                          Acima de {{ formatCurrency(taxa.valorMinimo) }}
+                        </span>
+                      </td>
+                      <td><strong>{{ formatCurrency(taxa.taxa) }}</strong></td>
+                      <td>{{ taxa.descricao }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,106 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+
+import { BaseComponent } from '../../core/components/base.component';
+import { TransferenciaViewModel } from '../../viewmodels/transferencia.viewmodel';
+import { Transferencia } from '../../models/transferencia.model';
+
+@Component({
+  selector: 'app-transferencia',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule
+  ],
+  providers: [TransferenciaViewModel],
+  templateUrl: './transferencia.component.html',
+  styleUrls: ['./transferencia.component.scss']
+})
+export class TransferenciaComponent extends BaseComponent implements OnInit {
+  activeTab: string = 'agendamento';
+  today = new Date();
+  
+  formData: Partial<Transferencia> = {
+    contaOrigem: 'XXXXXXXXXX',
+    contaDestino: 'XXXXXXXXXX',
+    valor: 0,
+    taxa: 0,
+    dataTransferencia: new Date(),
+    dataAgendamento: new Date(),
+    status: 'PENDENTE'
+  };
+
+  constructor(public vm: TransferenciaViewModel) {
+    super();
+  }
+
+  ngOnInit(): void {
+    this.vm.loadItems();
+    
+    this.vm.formData$
+      .pipe(this.takeUntilDestroy())
+      .subscribe(data => {
+        this.formData = { ...data };
+      });
+  }
+
+  onContaOrigemChange(event: any): void {
+    this.vm.updateFormData({ contaOrigem: event.target.value });
+  }
+
+  onContaDestinoChange(event: any): void {
+    this.vm.updateFormData({ contaDestino: event.target.value });
+  }
+
+  onValorChange(event: any): void {
+    this.vm.updateFormData({ valor: parseFloat(event.target.value) || 0 });
+  }
+
+  onDataTransferenciaChange(event: any): void {
+    this.vm.updateFormData({ dataTransferencia: new Date(event.target.value) });
+  }
+
+  setActiveTab(tab: string): void {
+    this.activeTab = tab;
+  }
+
+  formatDateForInput(date: Date | undefined): string {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  onSubmit(): void {
+    this.vm.submitTransferencia();
+  }
+
+  onReset(): void {
+    this.vm.resetForm();
+  }
+
+  formatCurrency(value: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  }
+
+  formatDate(date: Date): string {
+    return new Intl.DateTimeFormat('pt-BR').format(new Date(date));
+  }
+
+  getStatusClass(status: string): string {
+    switch (status) {
+      case 'PENDENTE': return 'status-pendente';
+      case 'REALIZADA': return 'status-realizada';
+      case 'CANCELADA': return 'status-cancelada';
+      default: return '';
+    }
+  }
+}
+
