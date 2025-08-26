@@ -1,6 +1,6 @@
 # RGR Agendamento - Frontend
 
-Sistema de agendamento desenvolvido com Angular 18, PrimeNG e Transloco seguindo o padrão arquitetural MVVM.
+Sistema de agendamento desenvolvido com Angular 18 seguindo o padrão arquitetural MVVM.
 
 ## 🚀 Tecnologias
 
