@@ -212,33 +212,58 @@
         <div class="taxas-container">
           <div class="card info-card">
             <div class="card-header">
-              <h2 class="card-title">Taxas Aplicáveis por Faixa de Valor</h2>
+              <h2 class="card-title">Tabela de Taxas por Dias de Transferência</h2>
             </div>
             <div class="card-body">
               <div class="table-container">
                 <table class="table">
                   <thead>
                     <tr>
-                      <th>Faixa de Valor</th>
-                      <th>Taxa</th>
-                      <th>Descrição</th>
+                      <th colspan="2">Dias Transferência</th>
+                      <th rowspan="2">R$</th>
+                      <th rowspan="2">Taxa</th>
+                    </tr>
+                    <tr>
+                      <th>De</th>
+                      <th>Até</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let taxa of vm.getTaxasDisponiveis()">
-                      <td>
-                        <span *ngIf="taxa.valorMinimo === 0">
-                          Até {{ formatCurrency(taxa.valorMaximo) }}
-                        </span>
-                        <span *ngIf="taxa.valorMinimo > 0 && taxa.valorMaximo < 999999999">
-                          {{ formatCurrency(taxa.valorMinimo) }} a {{ formatCurrency(taxa.valorMaximo) }}
-                        </span>
-                        <span *ngIf="taxa.valorMaximo >= 999999999">
-                          Acima de {{ formatCurrency(taxa.valorMinimo) }}
-                        </span>
-                      </td>
-                      <td><strong>{{ formatCurrency(taxa.taxa) }}</strong></td>
-                      <td>{{ taxa.descricao }}</td>
+                    <tr>
+                      <td>0</td>
+                      <td>0</td>
+                      <td>R$ 3,00</td>
+                      <td>2,5%</td>
+                    </tr>
+                    <tr>
+                      <td>1</td>
+                      <td>10</td>
+                      <td>R$ 12,00</td>
+                      <td>0,0%</td>
+                    </tr>
+                    <tr>
+                      <td>11</td>
+                      <td>20</td>
+                      <td>R$ 0,00</td>
+                      <td>8,2%</td>
+                    </tr>
+                    <tr>
+                      <td>21</td>
+                      <td>30</td>
+                      <td>R$ 0,00</td>
+                      <td>6,9%</td>
+                    </tr>
+                    <tr>
+                      <td>31</td>
+                      <td>40</td>
+                      <td>R$ 0,00</td>
+                      <td>4,7%</td>
+                    </tr>
+                    <tr>
+                      <td>41</td>
+                      <td>50</td>
+                      <td>R$ 0,00</td>
+                      <td>1,7%</td>
                     </tr>
                   </tbody>
                 </table>
