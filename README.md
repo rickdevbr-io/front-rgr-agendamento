@@ -10,7 +10,6 @@ Sistema de agendamento desenvolvido com Angular 18 seguindo o padrão arquitetur
 - **HTTP Client** - Configurado com `withFetch()` para melhor performance
 - **RxJS 7.8** - Biblioteca para programação reativa
 - **Express** - Servidor para SSR
-- **Transloco** - Sistema de internacionalização
 
 ## 🌍 Configuração de Environments
 
