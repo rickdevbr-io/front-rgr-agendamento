@@ -51,7 +51,7 @@ export class TransferenciaViewModel {
     const updatedData = { ...currentData, ...data };
     this.formDataSubject.next(updatedData);
 
-    if (data.valor !== undefined) {
+    if (data.valor !== undefined || data.dataTransferencia !== undefined) {
       this.calcularTaxa();
     }
   }
@@ -59,18 +59,30 @@ export class TransferenciaViewModel {
   private calcularTaxa(): void {
     const formData = this.getFormData();
     if (formData.valor !== null && formData.contaOrigem && formData.contaDestino && formData.dataTransferencia && formData.dataAgendamento) {
+      this.errorSubject.next(null);
+      
       this.taxaTransferenciaService.calcularTaxaTransferencia({
         contaOrigem: formData.contaOrigem!,
         contaDestino: formData.contaDestino!,
         valor: formData.valor!,
         dataTransferencia: formData.dataTransferencia!,
         dataAgendamento: formData.dataAgendamento!
-      }).subscribe((taxas: CalcularTaxaTransferenciaDtoPostRes) => {
-        this.taxaCalculadaSubject.next(taxas.valorTaxaTransferencia + taxas.valorAdicional);
-        this.taxaInfoSubject.next(taxas);
+      }).subscribe({
+        next: (taxas: CalcularTaxaTransferenciaDtoPostRes) => {
+          this.taxaCalculadaSubject.next(taxas.valorTaxaTransferencia + taxas.valorAdicional);
+          this.taxaInfoSubject.next(taxas);
+          this.errorSubject.next(null);
+        },
+        error: (error: any) => {
+          console.error('Erro ao calcular taxa:', error.error.message);
+          this.taxaCalculadaSubject.next(null);
+          this.taxaInfoSubject.next(null);
+          this.errorSubject.next('Erro ao calcular taxa: ' + (error.error.message|| 'Erro'));
+        }
       });
     } else {
       this.taxaInfoSubject.next(null);
+      this.taxaCalculadaSubject.next(null);
     }
   }
 
@@ -139,8 +151,8 @@ export class TransferenciaViewModel {
         this.errorSubject.next(null);
       },
       error: (error: any) => {
-        console.error('Erro ao criar agendamento:', error);
-        this.errorSubject.next('Erro ao criar agendamento: ' + error.message);
+        console.error('Erro ao criar agendamento:', error.error.message);
+        this.errorSubject.next('Erro ao criar agendamento: ' + (error.error.message || 'Erro'));
         this.loadingSubject.next(false);
       }
     });

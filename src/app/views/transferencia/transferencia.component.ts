@@ -47,6 +47,14 @@ export class TransferenciaComponent extends BaseComponent implements OnInit {
       .subscribe(data => {
         this.formData = { ...data };
       });
+
+    this.vm.error$
+      .pipe(this.takeUntilDestroy())
+      .subscribe(error => {
+        if (error) {
+          console.log('Erro capturado:', error);
+        }
+      });
   }
 
   onContaOrigemChange(event: any): void {
@@ -79,6 +87,7 @@ export class TransferenciaComponent extends BaseComponent implements OnInit {
   }
 
   onSubmit(): void {
+    this.vm.clearError();
     this.vm.submitTransferencia();
   }
 
