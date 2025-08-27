@@ -1,14 +1,19 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { BaseViewModel } from '../core/viewmodels/base.viewmodel';
-import { TransferenciaService } from '../services/transferencia.service';
-import { Transferencia, TaxaTransferencia } from '../models/transferencia.model';
+import { TaxaTransferenciaService } from '../services/taxa-transferencia.service';
+import { AgendamentoService } from '../services/agendamento.service';
+import { Transferencia } from '../models/taxa-transferencia.model';
+import { TaxaTransferencia as TaxaTransferenciaResponse } from '../models/response/taxas-transferencia-dto-get-res';
+import { AgendamentoDtoGetRes } from '../models/response/agendamento-dto-get-res';
+import { AgendamentoDtoGetReq } from '../models/request/agendamento-dto-get-req';
+import { CalcularTaxaTransferenciaDtoPostReq } from '../models/request/calcular-taxa-transferencia-dto-post-req';
+import { CalcularTaxaTransferenciaDtoPostRes } from '../models/response/calcular-taxa-transferencia-dto-post-res';
 
 @Injectable()
-export class TransferenciaViewModel extends BaseViewModel<Transferencia> {
+export class TransferenciaViewModel {
   private formDataSubject = new BehaviorSubject<Partial<Transferencia>>({
-    contaOrigem: 'XXXXXXXXXX',
-    contaDestino: 'XXXXXXXXXX',
+    contaOrigem: '',
+    contaDestino: '',
     valor: 0,
     taxa: 0,
     dataTransferencia: new Date(),
@@ -17,14 +22,28 @@ export class TransferenciaViewModel extends BaseViewModel<Transferencia> {
   });
 
   private taxaCalculadaSubject = new BehaviorSubject<number | null>(null);
-  private taxaInfoSubject = new BehaviorSubject<TaxaTransferencia | null>(null);
+  private taxaInfoSubject = new BehaviorSubject<CalcularTaxaTransferenciaDtoPostRes | null>(null);
+  private taxasDisponiveisSubject = new BehaviorSubject<TaxaTransferenciaResponse[]>([]);
+  private agendamentosSubject = new BehaviorSubject<AgendamentoDtoGetRes[]>([]);
+  private loadingSubject = new BehaviorSubject<boolean>(false);
+  private errorSubject = new BehaviorSubject<string | null>(null);
+  private itemsSubject = new BehaviorSubject<Transferencia[]>([]);
 
   public formData$ = this.formDataSubject.asObservable();
   public taxaCalculada$ = this.taxaCalculadaSubject.asObservable();
   public taxaInfo$ = this.taxaInfoSubject.asObservable();
+  public taxasDisponiveis$ = this.taxasDisponiveisSubject.asObservable();
+  public agendamentos$ = this.agendamentosSubject.asObservable();
+  public loading$ = this.loadingSubject.asObservable();
+  public error$ = this.errorSubject.asObservable();
+  public items$ = this.itemsSubject.asObservable();
 
-  constructor(service: TransferenciaService) {
-    super(service);
+  constructor(
+    private taxaTransferenciaService: TaxaTransferenciaService,
+    private agendamentoService: AgendamentoService
+  ) {
+    this.loadTaxasDisponiveis();
+    this.loadAgendamentos();
   }
 
   updateFormData(data: Partial<Transferencia>): void {
@@ -33,19 +52,23 @@ export class TransferenciaViewModel extends BaseViewModel<Transferencia> {
     this.formDataSubject.next(updatedData);
 
     if (data.valor !== undefined) {
-      this.calcularTaxa(data.valor);
+      this.calcularTaxa();
     }
   }
 
-  private calcularTaxa(valor: number): void {
-    const service = this.service as TransferenciaService;
-    const taxa = service.calcularTaxa(valor);
-    this.taxaCalculadaSubject.next(taxa);
-
-    if (taxa !== null) {
-      const taxas = service.getTaxasTransferencia();
-      const taxaInfo = taxas.find(t => t.taxa === taxa);
-      this.taxaInfoSubject.next(taxaInfo || null);
+  private calcularTaxa(): void {
+    const formData = this.getFormData();
+    if (formData.valor !== null && formData.contaOrigem && formData.contaDestino && formData.dataTransferencia && formData.dataAgendamento) {
+      this.taxaTransferenciaService.calcularTaxaTransferencia({
+        contaOrigem: formData.contaOrigem!,
+        contaDestino: formData.contaDestino!,
+        valor: formData.valor!,
+        dataTransferencia: formData.dataTransferencia!,
+        dataAgendamento: formData.dataAgendamento!
+      }).subscribe((taxas: CalcularTaxaTransferenciaDtoPostRes) => {
+        this.taxaCalculadaSubject.next(taxas.valorTaxaTransferencia + taxas.valorAdicional);
+        this.taxaInfoSubject.next(taxas);
+      });
     } else {
       this.taxaInfoSubject.next(null);
     }
@@ -57,8 +80,8 @@ export class TransferenciaViewModel extends BaseViewModel<Transferencia> {
 
   resetForm(): void {
     this.formDataSubject.next({
-      contaOrigem: 'XXXXXXXXXX',
-      contaDestino: 'XXXXXXXXXX',
+      contaOrigem: '',
+      contaDestino: '',
       valor: 0,
       taxa: 0,
       dataTransferencia: new Date(),
@@ -71,16 +94,17 @@ export class TransferenciaViewModel extends BaseViewModel<Transferencia> {
 
   canSubmit(): boolean {
     const data = this.formDataSubject.value;
-    const taxa = this.taxaCalculadaSubject.value;
     
-    return !!(
-      data.contaOrigem &&
+    let result = false;
+    if(data.contaOrigem &&
       data.contaDestino &&
       (data.valor ?? 0) > 0 &&
-      taxa !== null &&
       data.dataTransferencia &&
-      data.contaOrigem !== data.contaDestino
-    );
+      data.contaOrigem !== data.contaDestino){
+        result = true;
+      }
+
+    return result;
   }
 
   submitTransferencia(): void {
@@ -95,19 +119,66 @@ export class TransferenciaViewModel extends BaseViewModel<Transferencia> {
       return;
     }
 
-    const transferencia: Transferencia = {
-      ...formData as Transferencia,
-      taxa: taxa,
+    const agendamentoRequest: CalcularTaxaTransferenciaDtoPostReq = {
+      contaOrigem: formData.contaOrigem!,
+      contaDestino: formData.contaDestino!,
+      valor: formData.valor!,
+      dataTransferencia: formData.dataTransferencia!,
       dataAgendamento: new Date()
     };
 
-    this.createItem(transferencia);
-    this.resetForm();
+    this.loadingSubject.next(true);
+    this.agendamentoService.postAgendamento(agendamentoRequest).subscribe({
+      next: (response: AgendamentoDtoGetRes) => {
+        console.log('Agendamento criado com sucesso:', response);
+        this.loadingSubject.next(false);
+        this.resetForm();
+        
+        this.loadAgendamentos();
+        
+        this.errorSubject.next(null);
+      },
+      error: (error: any) => {
+        console.error('Erro ao criar agendamento:', error);
+        this.errorSubject.next('Erro ao criar agendamento: ' + error.message);
+        this.loadingSubject.next(false);
+      }
+    });
   }
 
-  getTaxasDisponiveis(): TaxaTransferencia[] {
-    const service = this.service as TransferenciaService;
-    return service.getTaxasTransferencia();
+  loadTaxasDisponiveis(): void {
+    this.taxaTransferenciaService.getAll().subscribe({
+      next: (taxas: TaxaTransferenciaResponse[]) => {
+        this.taxasDisponiveisSubject.next(taxas);
+      },
+      error: (error: any) => {
+        console.error('Erro ao carregar taxas:', error);
+        this.taxasDisponiveisSubject.next([]);
+      }
+    });
+  }
+
+  loadAgendamentos(): void {
+    this.loadingSubject.next(true);
+    this.agendamentoService.getAll().subscribe({
+      next: (agendamentos: AgendamentoDtoGetRes[]) => {
+        this.agendamentosSubject.next(agendamentos);
+        this.loadingSubject.next(false);
+      },
+      error: (error: any) => {
+        console.error('Erro ao carregar agendamentos:', error);
+        this.errorSubject.next('Erro ao carregar agendamentos: ' + error.message);
+        this.loadingSubject.next(false);
+      }
+    });
+  }
+
+  getTaxasDisponiveis(): TaxaTransferenciaResponse[] {
+    return this.taxasDisponiveisSubject.value;
+  }
+
+  clearError(): void {
+    this.errorSubject.next(null);
   }
 }
 

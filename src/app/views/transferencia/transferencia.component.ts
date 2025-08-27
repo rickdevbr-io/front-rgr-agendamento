@@ -4,7 +4,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { BaseComponent } from '../../core/components/base.component';
 import { TransferenciaViewModel } from '../../viewmodels/transferencia.viewmodel';
-import { Transferencia } from '../../models/transferencia.model';
+import { Transferencia } from '../../models/taxa-transferencia.model';
+import { TaxaTransferenciaService } from '../../services/taxa-transferencia.service';
 
 @Component({
   selector: 'app-transferencia',
@@ -21,6 +22,8 @@ import { Transferencia } from '../../models/transferencia.model';
 export class TransferenciaComponent extends BaseComponent implements OnInit {
   activeTab: string = 'agendamento';
   today = new Date();
+  mensagemErroContaOrigem: string = '';
+  mensagemErroContaDestino: string = '';
   
   formData: Partial<Transferencia> = {
     contaOrigem: 'XXXXXXXXXX',
@@ -37,7 +40,7 @@ export class TransferenciaComponent extends BaseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.vm.loadItems();
+    this.vm.loadTaxasDisponiveis();
     
     this.vm.formData$
       .pipe(this.takeUntilDestroy())
@@ -101,6 +104,38 @@ export class TransferenciaComponent extends BaseComponent implements OnInit {
       case 'CANCELADA': return 'status-cancelada';
       default: return '';
     }
+  }
+
+  errorContaOrigem(contaOrigem: string, contaDestino: string): boolean {
+    let result = false;
+    
+    if(contaOrigem === contaDestino){
+      this.mensagemErroContaOrigem = 'Conta de origem não pode ser igual à conta de destino';
+      result = true;
+    }
+
+    if(contaOrigem === 'XXXXXXXXXX' || contaOrigem === ''){
+      this.mensagemErroContaOrigem = 'Conta de origem é obrigatória';
+      result = true;
+    }
+    
+    return result;
+  }
+
+  errorContaDestino(contaDestino: string, contaOrigem: string): boolean {
+    let result = false;
+    
+    if(contaDestino === contaOrigem){
+      this.mensagemErroContaDestino = 'Conta de destino não pode ser igual à conta de origem';
+      result = true;
+    }
+
+    if(contaDestino === 'XXXXXXXXXX' || contaDestino === ''){
+      this.mensagemErroContaDestino = 'Conta de destino é obrigatória';
+      result = true;
+    }
+    
+    return result;
   }
 }
 

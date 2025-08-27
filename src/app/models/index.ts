@@ -1,3 +1,3 @@
-export * from './transferencia.model';
+export * from './taxa-transferencia.model';
 
 
