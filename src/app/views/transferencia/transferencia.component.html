@@ -24,6 +24,13 @@
       <div *ngIf="activeTab === 'agendamento'" class="tab-content">
         <div class="form-container">
           
+          <div class="alert alert-warning">
+            <span>
+              <i class="taxa-icon warning">⚠</i>
+              Preencha por ultimo o valor da transferência para calcular a taxa de transferência.
+            </span>              
+          </div>
+                    
           <div *ngIf="vm.error$ | async as error" class="alert alert-error">
             <strong>Erro:</strong> {{ error }}
             <button class="alert-close" (click)="vm.clearError()">×</button>
